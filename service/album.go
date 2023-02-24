@@ -8,36 +8,64 @@ import (
 )
 
 type AlbumService interface {
-	GetAlbumListService(ctx context.Context) ([]*model.Album, error)
-	GetAlbumService(ctx context.Context, albumID model.AlbumID) (*model.Album, error)
+	GetAlbumListService(ctx context.Context) ([]*model.AlbumWithSinger, error)
+	GetAlbumService(ctx context.Context, albumID model.AlbumID) (*model.AlbumWithSinger, error)
 	PostAlbumService(ctx context.Context, album *model.Album) error
 	DeleteAlbumService(ctx context.Context, albumID model.AlbumID) error
 }
 
 type albumService struct {
 	albumRepository repository.AlbumRepository
+	singerRepository repository.SingerRepository
 }
 
 var _ AlbumService = (*albumService)(nil)
 
-func NewAlbumService(albumRepository repository.AlbumRepository) *albumService {
-	return &albumService{albumRepository: albumRepository}
+func NewAlbumService(albumRepository repository.AlbumRepository, singerRepository repository.SingerRepository) *albumService {
+	return &albumService{
+		albumRepository: albumRepository,
+		singerRepository: singerRepository,
+	}
 }
 
-func (s *albumService) GetAlbumListService(ctx context.Context) ([]*model.Album, error) {
+func (s *albumService) GetAlbumListService(ctx context.Context) ([]*model.AlbumWithSinger, error) {
 	albums, err := s.albumRepository.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return albums, nil
+
+	albumWithSingers := make([]*model.AlbumWithSinger, 0, len(albums))
+	for _, album := range albums {
+		singer, err := s.singerRepository.Get(ctx, album.SingerID)
+		if err != nil {
+			return nil, err
+		}
+
+		albumWithSingers = append(albumWithSingers, &model.AlbumWithSinger{
+			ID: album.ID,
+			Title: album.Title,
+			Singer: singer,
+		})
+	}
+	return albumWithSingers, nil
 }
 
-func (s *albumService) GetAlbumService(ctx context.Context, albumID model.AlbumID) (*model.Album, error) {
+func (s *albumService) GetAlbumService(ctx context.Context, albumID model.AlbumID) (*model.AlbumWithSinger, error) {
 	album, err := s.albumRepository.Get(ctx, albumID)
 	if err != nil {
 		return nil, err
 	}
-	return album, nil
+
+	singer, err := s.singerRepository.Get(ctx, album.SingerID)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &model.AlbumWithSinger{
+		ID: album.ID,
+		Title: album.Title,
+		Singer: singer,
+	}, nil
 }
 
 func (s *albumService) PostAlbumService(ctx context.Context, album *model.Album) error {

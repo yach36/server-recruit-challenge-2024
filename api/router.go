@@ -16,8 +16,8 @@ func NewRouter() *mux.Router {
 	singerController := controller.NewSingerController(singerService)
 
 	albumRepo := memorydb.NewAlbumRepository()
-	albumService := service.NewAlbumService(albumRepo) // 元処理を記述する必要がある
-	albumController := controller.NewAlbumController(albumService) // コントローラを記述する必要がある
+	albumService := service.NewAlbumService(albumRepo, singerRepo)
+	albumController := controller.NewAlbumController(albumService)
 
 	r := mux.NewRouter()
 
